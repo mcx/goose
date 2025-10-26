@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://www.googletagmanager.com">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZS5D6SB4ZJ"></script>
 <script>function gtag(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],gtag("js",new Date),gtag("config","G-ZS5D6SB4ZJ",{anonymize_ip:!0})</script><link rel="stylesheet" href="/goose/pr-preview/pr-5379/assets/css/styles.0f8f2dc1.css">
-<script src="/goose/pr-preview/pr-5379/assets/js/runtime~main.313c8319.js" defer="defer"></script>
+<script src="/goose/pr-preview/pr-5379/assets/js/runtime~main.ed01435e.js" defer="defer"></script>
 <script src="/goose/pr-preview/pr-5379/assets/js/main.4f45a1ca.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -46,7 +46,7 @@
 </ul>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="introducing-agent-client-protocol">Introducing Agent Client Protocol<a href="#introducing-agent-client-protocol" class="hash-link" aria-label="Direct link to Introducing Agent Client Protocol" title="Direct link to Introducing Agent Client Protocol">​</a></h2>
 <p>Zed Industries, the creators of the Zed code editor, developed a solution called <a href="https://agentclientprotocol.com/overview/introduction" target="_blank" rel="noopener noreferrer">Agent Client Protocol (ACP)</a> that resolves these integration challenges. ACP allows you to bring any AI agent into any supporting editor without vendor lock-in. More importantly, it solves the maintenance problem because the AI agent and editor communicate directly through a standardized protocol.</p>
-<p>Here&#x27;s how ACP works:</p>
+<p>This standardization is achieved by defining a common language via JSON-RPC. Instead of every editor and agent building private, complex handshakes, ACP uses a simple, predictable sequence of structured messages to manage the agent-editor session:</p>
 <ul>
 <li><strong>session/initialize:</strong> Your AI agent tells the editor what capabilities it supports (audio, text prompts, etc.)</li>
 <li><strong>session/new:</strong> When you start a new session, the agent and editor establish communication</li>
@@ -54,7 +54,6 @@
 <li><strong>session/update:</strong> The agent sends responses back to the editor</li>
 <li><strong>session/cancel:</strong> When you cancel a session, the agent stops processing</li>
 </ul>
-<p>These predictable message exchanges happen through JSON-RPC, creating a standard language for how editors and agents communicate. Instead of every editor and agent building private handshakes, ACP defines this common protocol using structured messages.</p>
 <p>Today, editors that support ACP include Zed, Neovim, and Marimo. Supported agents include Claude Code, Codex CLI, Gemini, StackPack, and of course, goose.</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="restoring-developer-flow">Restoring Developer Flow<a href="#restoring-developer-flow" class="hash-link" aria-label="Direct link to Restoring Developer Flow" title="Direct link to Restoring Developer Flow">​</a></h2>
 <p>For developers like me who have specific ways of achieving flow state, this means we can add AI assistance without completely restructuring our work environment. I can keep my criss-cross applesauce position, my split-screen setup, and my focused workflow while having goose integrated directly into my editor.</p>
