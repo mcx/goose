@@ -1,64 +1,17 @@
 import React, { useMemo } from 'react';
 import ActionPill from './ActionPill';
 import MentionPill from './MentionPill';
-import { Zap, Code, FileText, Search, Play, Settings } from 'lucide-react';
+import { Zap } from 'lucide-react';
+import { useCommands } from '../hooks/useCommands';
 
 interface MessageContentProps {
   content: string;
   className?: string;
 }
 
-// Icon mapping for custom commands
-const getCustomCommandIcon = (iconName?: string) => {
-  const iconMap: Record<string, React.ReactNode> = {
-    'Zap': <Zap size={12} />,
-    'Code': <Code size={12} />,
-    'FileText': <FileText size={12} />,
-    'Search': <Search size={12} />,
-    'Play': <Play size={12} />,
-    'Settings': <Settings size={12} />,
-  };
-  return iconMap[iconName || 'Zap'] || <Zap size={12} />;
-};
-
-// Dynamic action mapping that loads from localStorage
-const getActionMap = () => {
-  try {
-    const stored = localStorage.getItem('goose-custom-commands');
-    if (stored) {
-      const commands = JSON.parse(stored);
-      const actionMap: Record<string, { label: string; icon: React.ReactNode }> = {};
-
-      commands.forEach((cmd: any) => {
-        actionMap[cmd.id] = {
-          label: cmd.label,
-          icon: getCustomCommandIcon(cmd.icon),
-        };
-      });
-
-      return actionMap;
-    }
-  } catch (error) {
-    console.error('Error loading custom commands for action map:', error);
-  }
-
-  return {};
-};
-
-// Helper function to get action info
-const getActionInfo = (actionId: string) => {
-  const actionMap = getActionMap();
-  return actionMap[actionId] || { label: actionId, icon: <Zap size={12} /> };
-};
-
-// Map action labels back to action IDs for rendering
-const getActionIdFromLabel = (label: string): string => {
-  const actionMap = getActionMap();
-  const entry = Object.entries(actionMap).find(([_, config]) => config.label === label);
-  return entry ? entry[0] : label.toLowerCase().replace(/\s+/g, '-');
-};
-
 export const MessageContent: React.FC<MessageContentProps> = ({ content, className }) => {
+  const { commands } = useCommands();
+  
   const parsedContent = useMemo(() => {
     // Find all [Action] and @mention patterns and replace them with pill components
     const actionRegex = /\[([^\]]+)\]/g;
@@ -108,12 +61,12 @@ export const MessageContent: React.FC<MessageContentProps> = ({ content, classNa
       if (match.type === 'action') {
         // Add the action
         const actionLabel = match.content;
-        const actionId = getActionIdFromLabel(actionLabel);
+        const matchedCommand = commands.find(cmd => cmd.name === actionLabel);
 
         parts.push({
           type: 'action',
           content: actionLabel,
-          actionId: actionId,
+          actionId: matchedCommand?.id || actionLabel.toLowerCase().replace(/\s+/g, '-'),
         });
       } else if (match.type === 'mention') {
         // Add the mention
@@ -144,19 +97,19 @@ export const MessageContent: React.FC<MessageContentProps> = ({ content, classNa
     }
 
     return parts;
-  }, [content]);
+  }, [content, commands]);
 
   return (
     <span className={`inline ${className || ''}`}>
       {parsedContent.map((part, index) => {
         if (part.type === 'action' && part.actionId) {
-          const actionInfo = getActionInfo(part.actionId);
+          const matchedCommand = commands.find(cmd => cmd.id === part.actionId);
           return (
             <ActionPill
               key={`action-${index}`}
               actionId={part.actionId}
               label={part.content}
-              icon={actionInfo.icon}
+              icon={<Zap size={12} />}
               variant="message"
               size="sm"
               // No onRemove for message display - pills are read-only

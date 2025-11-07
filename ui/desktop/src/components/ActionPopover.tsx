@@ -24,11 +24,9 @@ import React, {
   useRef,
   forwardRef,
   useImperativeHandle,
-  useState,
 } from 'react';
-import { Zap, FileText, Code, Settings, Search, Play, Hash, Plus, SearchX } from 'lucide-react';
-import { CustomCommand, BUILT_IN_COMMANDS } from '../types/customCommands';
-import { Button } from './ui/button';
+import { Zap, SearchX } from 'lucide-react';
+import { useCommands } from '../hooks/useCommands';
 
 interface ActionItem {
   id: string;
@@ -36,8 +34,7 @@ interface ActionItem {
   description: string;
   icon: React.ReactNode;
   action: () => void;
-  isCustom?: boolean;
-  prompt?: string; // For custom commands
+  prompt?: string;
 }
 
 interface ActionPopoverProps {
@@ -47,145 +44,44 @@ interface ActionPopoverProps {
   position: { x: number; y: number };
   selectedIndex: number;
   onSelectedIndexChange: (index: number) => void;
-  query?: string; // Filter actions based on query
-  onCreateCommand?: () => void; // Callback to open command creation modal
+  query?: string;
 }
 
 const ActionPopover = forwardRef<
   { getDisplayActions: () => ActionItem[]; selectAction: (index: number) => void },
   ActionPopoverProps
->(({ isOpen, onClose, onSelect, position, selectedIndex, onSelectedIndexChange, query = '', onCreateCommand }, ref) => {
+>(({ isOpen, onClose, onSelect, position, selectedIndex, onSelectedIndexChange, query = '' }, ref) => {
   const popoverRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const [allCommands, setAllCommands] = useState<CustomCommand[]>([]);
-
-  // Load both built-in and user commands on mount
-  useEffect(() => {
-    const loadAllCommands = () => {
-      try {
-        // Load user commands
-        const userStored = localStorage.getItem('goose-custom-commands');
-        let userCommands: CustomCommand[] = [];
-        if (userStored) {
-          const parsed = JSON.parse(userStored);
-          userCommands = parsed
-            .filter((cmd: any) => !cmd.isBuiltIn) // Only user commands
-            .map((cmd: any) => ({
-              ...cmd,
-              createdAt: new Date(cmd.createdAt),
-              updatedAt: new Date(cmd.updatedAt)
-            }));
-        }
-
-        // Load built-in command favorites/usage
-        const builtInStored = localStorage.getItem('goose-builtin-commands');
-        let builtInCommands = [...BUILT_IN_COMMANDS];
-        if (builtInStored) {
-          const builtInData = JSON.parse(builtInStored);
-          builtInCommands = BUILT_IN_COMMANDS.map(cmd => ({
-            ...cmd,
-            isFavorite: builtInData[cmd.id]?.isFavorite || false,
-            usageCount: builtInData[cmd.id]?.usageCount || 0,
-          }));
-        }
-
-        // Combine all commands
-        setAllCommands([...builtInCommands, ...userCommands]);
-      } catch (error) {
-        console.error('Failed to load commands:', error);
-      }
-    };
-
-    if (isOpen) {
-      loadAllCommands();
-    }
-  }, [isOpen]);
-
-  // Icon mapping for custom commands
-  const getCustomCommandIcon = (iconName?: string) => {
-    const iconMap: Record<string, React.ReactNode> = {
-      'Zap': <Zap size={16} />,
-      'Code': <Code size={16} />,
-      'FileText': <FileText size={16} />,
-      'Search': <Search size={16} />,
-      'Play': <Play size={16} />,
-      'Settings': <Settings size={16} />,
-      'Hash': <Hash size={16} />,
-    };
-    return iconMap[iconName || 'Zap'] || <Zap size={16} />;
-  };
+  const { commands } = useCommands();
 
   // Convert all commands to action items
-  const allActions: ActionItem[] = allCommands.map(cmd => ({
+  const allActions: ActionItem[] = commands.map(cmd => ({
     id: cmd.id,
-    label: cmd.label,
+    label: cmd.name,
     description: cmd.description,
-    icon: getCustomCommandIcon(cmd.icon),
-    isCustom: !cmd.isBuiltIn, // Built-in commands are not "custom"
+    icon: <Zap size={16} />,
     prompt: cmd.prompt,
     action: () => {
-      console.log('Command action triggered:', cmd.name);
-      // Increment usage count for both built-in and user commands
-      if (cmd.isBuiltIn) {
-        // Update built-in command usage
-        const builtInStored = localStorage.getItem('goose-builtin-commands');
-        let builtInData: Record<string, { isFavorite: boolean; usageCount: number }> = {};
-        if (builtInStored) {
-          builtInData = JSON.parse(builtInStored);
-        }
-        builtInData[cmd.id] = {
-          isFavorite: builtInData[cmd.id]?.isFavorite || cmd.isFavorite,
-          usageCount: (builtInData[cmd.id]?.usageCount || cmd.usageCount) + 1,
-        };
-        localStorage.setItem('goose-builtin-commands', JSON.stringify(builtInData));
-      } else {
-        // Update user command usage
-        const userStored = localStorage.getItem('goose-custom-commands');
-        if (userStored) {
-          const userCommands = JSON.parse(userStored);
-          const updatedCommands = userCommands.map((c: any) => 
-            c.id === cmd.id ? { ...c, usageCount: c.usageCount + 1 } : c
-          );
-          localStorage.setItem('goose-custom-commands', JSON.stringify(updatedCommands));
-        }
-      }
+      console.log('Command triggered:', cmd.name);
     },
   }));
 
   // Filter commands based on query
-  const filteredActions = allActions.filter(action => {
-    const cmd = allCommands.find(c => c.id === action.id);
-    
-    // If no query, show only starred commands
-    if (!query) {
-      return cmd?.isFavorite === true;
-    }
-    
-    // If there's a query, search through all commands
-    const searchTerm = query.toLowerCase();
-    return (
-      action.label.toLowerCase().includes(searchTerm) ||
-      action.description.toLowerCase().includes(searchTerm) ||
-      action.id.toLowerCase().includes(searchTerm)
-    );
-  });
+  const filteredActions = query
+    ? allActions.filter(action => {
+        const searchTerm = query.toLowerCase();
+        return (
+          action.label.toLowerCase().includes(searchTerm) ||
+          action.description.toLowerCase().includes(searchTerm)
+        );
+      })
+    : allActions;
 
-  // Sort actions: favorites first, then by usage count, then alphabetically
-  const sortedActions = filteredActions.sort((a, b) => {
-    const cmdA = allCommands.find(c => c.id === a.id);
-    const cmdB = allCommands.find(c => c.id === b.id);
-    
-    if (cmdA?.isFavorite && !cmdB?.isFavorite) return -1;
-    if (!cmdA?.isFavorite && cmdB?.isFavorite) return 1;
-    
-    if (cmdA && cmdB) {
-      if (cmdA.usageCount !== cmdB.usageCount) {
-        return cmdB.usageCount - cmdA.usageCount;
-      }
-    }
-    
-    return a.label.localeCompare(b.label);
-  });
+  // Sort alphabetically
+  const sortedActions = filteredActions.sort((a, b) => 
+    a.label.localeCompare(b.label)
+  );
 
   // Expose methods to parent component
   useImperativeHandle(
@@ -271,10 +167,10 @@ const ActionPopover = forwardRef<
       <div className="p-3">
         <div className="mb-2">
           <h3 className="text-sm font-medium text-textStandard">
-            {query ? 'Search Results' : 'Starred Commands'}
+            {query ? 'Search Results' : 'Commands'}
           </h3>
           <p className="text-xs text-textSubtle">
-            {query ? `Commands matching "${query}"` : 'Your favorite slash commands'}
+            {query ? `Commands matching "${query}"` : 'Available slash commands'}
           </p>
         </div>
         
@@ -308,44 +204,9 @@ const ActionPopover = forwardRef<
           ) : (
             <div className="p-3 text-center text-textSubtle">
               <div className="text-sm mb-2 text-textMuted">
-                {query 
-                  ? <><SearchX size={24} className="text-textMuted mx-auto mb-1" /></> 
-                  : allCommands.length === 0 
-                    ? 'No commands found'
-                    : 'No starred commands found'
-                }
+                <SearchX size={24} className="text-textMuted mx-auto mb-1" />
+                No commands found
               </div>
-              {query && onCreateCommand ? (
-                <Button
-                  onClick={() => {
-                    onCreateCommand();
-                    onClose();
-                  }}
-                  variant="ghost" size="sm"
-                  className="flex items-center gap-2 mx-auto"
-                >
-                  <Plus size={14} />
-                  Create Command
-                </Button>
-              ) : !query && allCommands.length === 0 ? (
-                onCreateCommand ? (
-                  <Button
-                    onClick={() => {
-                      onCreateCommand();
-                      onClose();
-                    }}
-                    variant="ghost" size="sm"
-                    className="flex items-center gap-2 mx-auto"
-                  >
-                    <Plus size={14} />
-                    Create Command
-                  </Button>
-                ) : (
-                  <div className="text-xs">Create commands in Settings → Chat</div>
-                )
-              ) : (
-                <div className="text-xs">Star commands to see them here when you type /</div>
-              )}
             </div>
           )}
         </div>
